@@ -1,8 +1,8 @@
 ﻿// CodeGear C++Builder
-// Copyright (c) 1995, 2016 by Embarcadero Technologies, Inc.
+// Copyright (c) 1995, 2017 by Embarcadero Technologies, Inc.
 // All rights reserved
 
-// (DO NOT EDIT: machine generated header) 'EasyListviewDD.dpk' rev: 31.00 (Windows)
+// (DO NOT EDIT: machine generated header) 'EasyListviewDD.dpk' rev: 32.00 (Windows)
 
 #ifndef EasylistviewddHPP
 #define EasylistviewddHPP
@@ -23,9 +23,9 @@
 #include <System.SysUtils.hpp>	// (rtl)
 #include <System.VarUtils.hpp>	// (rtl)
 #include <System.Variants.hpp>	// (rtl)
+#include <System.Math.hpp>	// (rtl)
 #include <System.Rtti.hpp>	// (rtl)
 #include <System.TypInfo.hpp>	// (rtl)
-#include <System.Math.hpp>	// (rtl)
 #include <System.Generics.Defaults.hpp>	// (rtl)
 #include <System.Classes.hpp>	// (rtl)
 #include <System.Actions.hpp>	// (rtl)
@@ -87,13 +87,20 @@
 #include <VCLEditors.hpp>	// (designide)
 #include <ToolWnds.hpp>	// (designide)
 #include <ColnEdit.hpp>	// (designide)
-#include <MPResources.hpp>	// (MPCommonLibD)
-#include <MPThreadManager.hpp>	// (MPCommonLibD)
-#include <MPShellUtilities.hpp>	// (MPCommonLibD)
-#include <MPDataObject.hpp>	// (MPCommonLibD)
-#include <MPCommonObjects.hpp>	// (MPCommonLibD)
-#include <MPCommonUtilities.hpp>	// (MPCommonLibD)
+#include <MPResources.hpp>	// (EasyListviewD)
+#include <MPThreadManager.hpp>	// (EasyListviewD)
+#include <MPShellUtilities.hpp>	// (EasyListviewD)
+#include <MPDataObject.hpp>	// (EasyListviewD)
+#include <MPCommonObjects.hpp>	// (EasyListviewD)
+#include <MPCommonUtilities.hpp>	// (EasyListviewD)
 #include <EasyListview.hpp>	// (EasyListviewD)
+#include <MPCommonWizardHelpers.hpp>
+#include <MPCommonWizardTemplates.hpp>
+// SO_SFX: 250
+// PRG_EXT: .bpl
+// BPI_DIR: C:\devtemp\components\BPL\Tokyo\Win32
+// OBJ_DIR: C:\devtemp\components\BPL\Tokyo\Win32
+// OBJ_EXT: .obj
 
 //-- user supplied -----------------------------------------------------------
 
