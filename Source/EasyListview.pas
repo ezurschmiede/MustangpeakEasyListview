@@ -953,6 +953,7 @@ type
   TOLEDropTargetDragOverEvent = procedure(Sender: TCustomEasyListview; KeyState: TCommonKeyStates; WindowPt: TPoint; AvailableEffects: TCommonDropEffects; var DesiredDropEffect: TCommonDropEffect) of object;
   TOLEDropTargetDragLeaveEvent = procedure(Sender: TCustomEasyListview) of object;
   TOLEDropTargetDragDropEvent = procedure(Sender: TCustomEasyListview; DataObject: IDataObject; KeyState: TCommonKeyStates; WindowPt: TPoint; AvailableEffects: TCommonDropEffects; var DesiredDropEffect: TCommonDropEffect; var Handled: Boolean) of object;
+  TOLEAfterDropTargetDragDropEvent = procedure(Sender: TCustomEasyListview; DataObject: IDataObject; KeyState: TCommonKeyStates; WindowPt: TPoint; AvailableEffects: TCommonDropEffects; DesiredDropEffect: TCommonDropEffect; Handled: Boolean) of object;
   TOLEGetCustomFormatsEvent = procedure(Sender: TCustomEasyListview; dwDirection: Integer; var Formats: TFormatEtcArray) of object;
   TOLEGetDataEvent = procedure(Sender: TCustomEasyListview; const FormatEtcIn: TFormatEtc; var Medium: TStgMedium; var Handled: Boolean) of object;
   FOLEGetDataObjectEvent = procedure(Sender: TCustomEasyListview; var DataObject: IDataObject) of object;
@@ -1276,15 +1277,21 @@ type
   private
     FGridLineColor: TColor;
     FGridLines: Boolean;
+    FHorzGridLine: Boolean;
+    FVertGridLine: Boolean;
     FHideCaption: Boolean;
     FTileDetailCount: Integer;
     procedure SetGridLineColor(const Value: TColor);
     procedure SetGridLines(const Value: Boolean);
+    procedure SetHorzGridLine(const Value: Boolean);
+    procedure SetVertGridLine(const Value: Boolean);
     procedure SetHideCaption(const Value: Boolean);
     procedure SetTileDetailCount(Value: Integer);
   protected
     property GridLineColor: TColor read FGridLineColor write SetGridLineColor default clBtnFace;
     property GridLines: Boolean read FGridLines write SetGridLines default False;
+    property HorzGridLine: Boolean read FHorzGridLine write SetHorzGridLine default False;
+    property VertGridLine: Boolean read FVertGridLine write SetVertGridLine default False;
     property HideCaption: Boolean read FHideCaption write SetHideCaption default False;
     property TileDetailCount: Integer read FTileDetailCount write SetTileDetailCount default 1;
   public
@@ -1303,6 +1310,8 @@ type
     property CheckType;
     property GridLineColor;
     property GridLines;
+    property HorzGridLine;
+    property VertGridLine;
     property HideCaption;
     property ImageIndent;
     property ShowBorder;
@@ -4845,6 +4854,7 @@ type
     FOnItemVisibilityChanging: TItemVisibilityChangingEvent;
     FOnKeyAction: TEasyKeyActionEvent;
     FOnOLEDragDrop: TOLEDropTargetDragDropEvent;
+    FOnOLEAfterDragDrop: TOLEAfterDropTargetDragDropEvent;
     FOnOLEDragEnd: TOLEDropSourceDragEndEvent;
     FOnOLEDragEnter: TOLEDropTargetDragEnterEvent;
     FOnOLEDragLeave: TOLEDropTargetDragLeaveEvent;
@@ -5094,6 +5104,7 @@ type
     procedure DoOLEDropTargetDragOver(KeyState: TCommonKeyStates; WindowPt: TPoint; AvailableEffects: TCommonDropEffects; var DesiredEffect: TCommonDropEffect); virtual;
     procedure DoOLEDropTargetDragLeave; virtual;
     procedure DoOLEDropTargetDragDrop(DataObject: IDataObject; KeyState: TCommonKeyStates; WindowPt: TPoint; AvailableEffects: TCommonDropEffects; var DesiredEffect: TCommonDropEffect; var Handled: Boolean); virtual;
+    procedure DoOLEAfterDropTargetDragDrop(ADataObject: IDataObject; AKeyState: TCommonKeyStates; AWindowPt: TPoint; AAvailableEffects: TCommonDropEffects; ADesiredEffect: TCommonDropEffect; AHandled: Boolean); virtual;
     procedure DoOLEGetCustomFormats(dwDirection: Integer; var Formats: TFormatEtcArray); virtual;
     procedure DoOLEGetData(const FormatEtcIn: TFormatEtc; var Medium: TStgMedium; var Handled: Boolean); virtual;
     procedure DoOLEGetDataObject(var DataObject: IDataObject); virtual;
@@ -5345,6 +5356,7 @@ type
     property OnOLEDragOver: TOLEDropTargetDragOverEvent read FOnOLEDragOver write FOnOLEDragOver;
     property OnOLEDragLeave: TOLEDropTargetDragLeaveEvent read FOnOLEDragLeave write FOnOLEDragLeave;
     property OnOLEDragDrop: TOLEDropTargetDragDropEvent read FOnOLEDragDrop write FOnOLEDragDrop;
+    property OnOLEAfterDragDrop: TOLEAfterDropTargetDragDropEvent read FOnOLEAfterDragDrop write FOnOLEAfterDragDrop;
     property OnOLEGetCustomFormats: TOLEGetCustomFormatsEvent read FOnOLEGetCustomFormats write FOnOLEGetCustomFormats;
     property OnOLEGetData: TOLEGetDataEvent read FOnOLEGetData write FOnOLEGetData;
     property OnOLEGetDataObject: FOLEGetDataObjectEvent read FOnOLEGetDataObject write FOnOLEGetDataObject;
@@ -5706,6 +5718,7 @@ type
     property OnOLEDragOver;
     property OnOLEDragLeave;
     property OnOLEDragDrop;
+    property OnOLEAfterDragDrop;
     property OnOLEGetCustomFormats;
     property OnOLEGetData;
     property OnOLEGetDataObject;
@@ -13365,6 +13378,8 @@ begin
   if Assigned(DragManager) then
     DragManager.DragDrop(Owner.ScreenToClient(pt), KeyState, Effect, Handled);
 
+  Owner.DoOLEAfterDropTargetDragDrop(dataObj, KeyState, pt, DropEffectToDropEffectStates(dwEffect), Effect, Handled);
+
   dwEffect := DropEffectStateToDropEffect(Effect);
   Result := S_OK
 end;
@@ -14614,9 +14629,9 @@ begin
         begin
           inherited;
 
-          Msg.Result := Longint(ControlAtPos(ScreenToClient(Msg.DragRec^.Pos), False));
+          Msg.Result := LRESULT(ControlAtPos(ScreenToClient(Msg.DragRec^.Pos), False));
           if Msg.Result = 0 then
-            Msg.Result := Longint(Self);
+            Msg.Result := LRESULT(Self);
         end;
   else
     inherited;
@@ -15793,6 +15808,14 @@ begin
     OnOLEDragDrop(Self, DataObject, KeyState, WindowPt, AvailableEffects, DesiredEffect, Handled)
 end;
 
+procedure TCustomEasyListview.DoOLEAfterDropTargetDragDrop(ADataObject: IDataObject; AKeyState: TCommonKeyStates; AWindowPt: TPoint; AAvailableEffects: TCommonDropEffects; ADesiredEffect: TCommonDropEffect; AHandled: Boolean);
+// After the control is the OLE Drag target this is called when the data object is
+// dropped on the control
+begin
+  if Assigned(OnOLEAfterDragDrop) then
+    OnOLEAfterDragDrop(Self, ADataObject, AKeyState, AWindowPt, AAvailableEffects, ADesiredEffect, AHandled)
+end;
+
 procedure TCustomEasyListview.DoOLEDropTargetDragEnter(DataObject: IDataObject;
   KeyState: TCommonKeyStates; WindowPt: TPoint; AvailableEffects: TCommonDropEffects;
   var DesiredEffect: TCommonDropEffect);
@@ -16132,32 +16155,47 @@ begin
     if not SelectedOnly and (View in [elsReport, elsReportThumb, elsGrid]) then
     begin
       // Paint the Grid Lines
-      if PaintInfoItem.GridLines then
+      if (PaintInfoItem.GridLines) or (PaintInfoItem.HorzGridLine) or (PaintInfoItem.VertGridLine) then
       begin
         ClipHeader(ACanvas, True);
         FirstVisibleGroup := Groups.FirstVisibleGroup;
         ACanvas.Pen.Color := PaintInfoItem.GridLineColor;
-        Column := Header.FirstColumnInRect(ViewClipRect);
-        while Assigned(Column) do
+
+        if (PaintInfoItem.GridLines) or (PaintInfoItem.VertGridLine) then
         begin
-          Group := FirstVisibleGroup;
-          while Assigned(Group) do
+          // Paint the veritcal Grid Lines
+          Column := Header.FirstColumnInRect(ViewClipRect);
+          while Assigned(Column) do
           begin
-            R := Column.DisplayRect;
-            ACanvas.MoveTo(R.Right, Group.BoundsRectBkGnd.Top);
-            ACanvas.LineTo(R.Right, Group.BoundsRectBkGnd.Bottom);
-            Group := Groups.NextVisibleGroup(Group)
+            Group := FirstVisibleGroup;
+            while Assigned(Group) do
+            begin
+              R := Column.DisplayRect;
+              ACanvas.MoveTo(R.Right - 1, Group.BoundsRectBkGnd.Top - 2);
+              if PaintInfoItem.VertGridLine then
+                ACanvas.LineTo(R.Right - 1, ViewClipRect.Bottom) // Use Full veritcal lines
+              else
+                ACanvas.LineTo(R.Right - 1, Group.BoundsRectBkGnd.Bottom); // Use veritcal lines based on Group.BoundsRectBkGnd.Bottom
+
+              Group := Groups.NextVisibleGroup(Group)
+            end;
+            Column := Header.NextColumnInRect(Column, ViewClipRect);
           end;
-          Column := Header.NextColumnInRect(Column, ViewClipRect);
         end;
-        Item := Groups.FirstItemInRect(ViewClipRect);
-        while Assigned(Item) do
+
+        if (PaintInfoItem.GridLines) or (PaintInfoItem.HorzGridLine) then
         begin
-          R := Item.DisplayRect;
-          ACanvas.MoveTo(Scrollbars.OffsetX, R.Bottom-1);
-          ACanvas.LineTo(Scrollbars.OffsetX + ClientWidth, R.Bottom-1);
-          Item := Groups.NextItemInRect(Item, ViewClipRect)
+          // Paint the horizontal Grid Lines
+          Item := Groups.FirstItemInRect(ViewClipRect);
+          while Assigned(Item) do
+          begin
+            R := Item.DisplayRect;
+            ACanvas.MoveTo(Scrollbars.OffsetX, R.Bottom-1);
+            ACanvas.LineTo(Scrollbars.OffsetX + ClientWidth, R.Bottom-1);
+            Item := Groups.NextItemInRect(Item, ViewClipRect)
+          end;
         end;
+
         Dec(FocusRect.Bottom);
         DrawFocusRect(ACanvas.Handle, FocusRect)
       end
@@ -20675,6 +20713,9 @@ procedure TEasyViewItem.LoadTextFont(AItem: TEasyItem; APosition: Integer; ACanv
 var
   lServices: TCustomStyleServices;
 begin
+  if (ACanvas = nil) or (ACanvas.Font = nil) or (OwnerListview.Font = nil) then
+    Exit;
+
   ACanvas.Font.Assign(OwnerListview.Font);
   ACanvas.Brush.Style := bsClear;
   if not OwnerListview.ShowInactive then
@@ -21495,9 +21536,14 @@ begin
 end;
 
 function TEasyHeader.GetViewWidth: Integer;
+var
+  lColumn: TEasyColumn;
 begin
   if Positions.Count > 0 then
-    Result := Positions[Positions.Count - 1].DisplayRect.Right
+  begin
+    lColumn := Positions[Positions.Count - 1];
+    Result := lColumn.DisplayRect.Right;
+  end
   else
     Result := 0
 end;
@@ -23684,8 +23730,8 @@ begin
            if Assigned(LastItem) then
            begin
              LastItem.View.ItemRectArray(LastItem, nil, nil, Item.Caption, RectArray);
-             if TestPt.Y > RectArray.LabelRect.Bottom - 1 then
-               TestPt.Y := RectArray.LabelRect.Bottom - 1;
+             if TestPt.Y > RectArray.BoundsRect.Bottom - 1 then
+               TestPt.Y := RectArray.BoundsRect.Bottom - 1;
            end;
 
            // Look for an item directly below the currently selected item
@@ -28170,6 +28216,24 @@ begin
   if FGridLines <> Value then
   begin
     FGridLines := Value;
+    OwnerListview.SafeInvalidateRect(nil, False)
+  end
+end;
+
+procedure TEasyPaintInfoBaseItem.SetHorzGridLine(const Value: Boolean);
+begin
+  if FHorzGridLine <> Value then
+  begin
+    FHorzGridLine := Value;
+    OwnerListview.SafeInvalidateRect(nil, False)
+  end
+end;
+
+procedure TEasyPaintInfoBaseItem.SetVertGridLine(const Value: Boolean);
+begin
+  if FVertGridLine <> Value then
+  begin
+    FVertGridLine := Value;
     OwnerListview.SafeInvalidateRect(nil, False)
   end
 end;
